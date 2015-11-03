@@ -85,7 +85,7 @@ BOOL WriteRecordToTextFile(LPCTSTR szRecord)
 LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	TCHAR szRecord[MAX_PATH];
-	wsprintf(szRecord, L"WM_: msg=%i, wP=%i, lP=%i", message, wParam, lParam);
+	wsprintf(szRecord, L"WM_: msg=0x%08x, wP=%i, lP=%i", message, wParam, lParam);
 	WriteRecordToTextFile(szRecord);
 	
 	WM_EVT_DATA myData;
@@ -98,10 +98,20 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 	else
 		DEBUGMSG(1, (L"subclass RDM: WriteMsgQueue failed: %i\n", GetLastError()));
 
-	DEBUGMSG(1, (L"SubclassWndProc: hwnd=0x%08x, msg=%i, wP=%i, lP=%i\n", window, message, wParam, lParam));
+	DEBUGMSG(1, (L"SubclassWndProc: hwnd=0x%08x, msg=0x%08x, wP=%i, lP=%i\n", window, message, wParam, lParam));
 
 	switch (message)
 	{
+		case WM_WININICHANGE: //sent when SIP is shown, do not forward?
+			//if(lParam!=NULL){
+			if(lParam==133071496){
+//				DEBUGMSG(1, (L"Got WM_WININICHANGE with '%s'\n", (TCHAR)lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
+				return 0; //lie about message handled
+			}
+			break;
+		case WM_SIZE:
+			DEBUGMSG(1, (L"Got WM_SIZE with wP=0x%08x, lP=0x%08x\n", wParam, lParam));
+			break;
 		// This message is sent when an application passes data to another 
 		// application. 
 //		case WM_COPYDATA:
@@ -178,11 +188,13 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 {
 	hExitEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	DWORD dwError =0;
+	TCHAR szError[MAX_PATH] = {0};
+
 	if (hExitEvent == NULL)
 	{
 #if DEBUG
-		DWORD dwError = GetLastError();
-		TCHAR szError[MAX_PATH] = {0};
+		dwError = GetLastError();
 		wsprintf(szError, 
 			L"CreateEvent() failed with %d [0x%08X]",
 			dwError,
@@ -202,7 +214,6 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		if (dwRet == WAIT_TIMEOUT)
 		{
 #if DEBUG
-			TCHAR szError[MAX_PATH] = {0};
 			wsprintf(szError, 
 				L"WaitForSingleObject() timed out.");
 			WriteRecordToTextFile(szError);
@@ -213,7 +224,6 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		if (dwRet == WAIT_OBJECT_0 + 0) // hExitEvent signaled!
 		{
 #if DEBUG
-			TCHAR szError[MAX_PATH] = {0};
 			wsprintf(szError, 
 				L"'Exit' event has been signaled.");
 			WriteRecordToTextFile(szError);
@@ -223,37 +233,68 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 
 		if (dwRet == WAIT_FAILED)
 		{
-#if DEBUG
-			DWORD dwError = GetLastError();
-			TCHAR szError[MAX_PATH] = {0};
-			wsprintf(szError, 
-				L"WaitForSingleObject() failed with %d [0x%08X]",
-				dwError,
-				dwError);
-			WriteRecordToTextFile(szError);
-#endif
 			break;
 		}
 	}//FindWindow(L"TSSHELWND", NULL)
 
-	CloseHandle(hExitEvent);
-	hExitEvent = NULL;
-
-	if (hWndRDM == NULL)
+	if (hWndRDM == NULL){
 		return dwRet; //failed
+	}
 
 	//Find child window to subclass?
-	hWndRDM=FindChildWindowByParent(hWndRDM, L"UIMainClass"); 
+#if DEBUG
+	wsprintf(szError, L"Looking for child window...");
+	WriteRecordToTextFile(szError);
+#endif
+	HWND hChildWin=FindChildWindowByParent(hWndRDM, L"UIMainClass");
+	do{
+		hChildWin=FindChildWindowByParent(hWndRDM, L"UIMainClass");
+		
+		dwRet = WaitForSingleObject(hExitEvent, 1000);
+		if (dwRet == WAIT_TIMEOUT)
+		{
+#if DEBUG
+			wsprintf(szError, 
+				L"WaitForSingleObject() timed out.");
+			WriteRecordToTextFile(szError);
+#endif
+			continue;
+		}
+
+		if (dwRet == WAIT_OBJECT_0 + 0) // hExitEvent signaled!
+		{
+#if DEBUG
+			wsprintf(szError, L"'Exit' event has been signaled.");
+			WriteRecordToTextFile(szError);
+#endif
+			break;
+		}
+
+		if (dwRet == WAIT_FAILED)
+		{
+			break;
+		}
+	}while(hChildWin==NULL);
+
 	//FindChildWindowByParent(hWnd, L"TerminalServerClient");
 	//FindChildWindowByParent(hWnd, L"WinShell");
 	//hWnd=FindWindow(L"MS_SIPBUTTON",L"MS_SIPBUTTON");
+#if DEBUG
+	wsprintf(szError, L"child window has handle %i (0x%08x)", hChildWin, hChildWin);
+	WriteRecordToTextFile(szError);
+#endif
+	if(hChildWin!=NULL){
+		DEBUGMSG(1, (L"### Using child window\n"));
+		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
+	}else{
+		DEBUGMSG(1, (L"### Using main window\n"));
+		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
+	}
 
-	RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
 	if (RDMWndFunc == NULL)
 	{
 #if DEBUG
-		DWORD dwError = GetLastError();
-		TCHAR szError[MAX_PATH] = {0};
+		dwError = GetLastError();
 		wsprintf(szError, 
 			L"SetWindowLong() failed with %d [0x%08X]",
 			dwError,
@@ -264,7 +305,8 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		return GetLastError();
 #endif
 	}
-
+	CloseHandle(hExitEvent);
+	hExitEvent = NULL;
 	return ERROR_SUCCESS;
 }
 
@@ -291,16 +333,20 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			WriteRecordToTextFile(szRecord);
 			return TRUE;
 		}
-		MSGQUEUEOPTIONS msqOptions; memset(&msqOptions, 0, sizeof(MSGQUEUEOPTIONS));
+
+		//we are attached to process wpctsc.exe
+		MSGQUEUEOPTIONS msqOptions; 
+		memset(&msqOptions, 0, sizeof(MSGQUEUEOPTIONS));
 
 		msqOptions.dwSize=sizeof(MSGQUEUEOPTIONS);
 		msqOptions.dwFlags=MSGQUEUE_NOPRECOMMIT | MSGQUEUE_ALLOW_BROKEN;
-		msqOptions.cbMaxMessage=0; //no limit
+		msqOptions.cbMaxMessage=MAX_PATH; //size of message
+		msqOptions.dwMaxMessages=10;		
 		msqOptions.bReadAccess=FALSE; //need write access, no read
 		
-		h_RDM_msgQueue = CreateMsgQueue(RDM_MSG_QUEUE, &msqOptions);
 
 		if(h_RDM_msgQueue==NULL){
+			h_RDM_msgQueue = CreateMsgQueue(RDM_MSG_QUEUE, &msqOptions);
 			DWORD dwErr=GetLastError();
 			wsprintf(szRecord, L"CreateMsgQueue failed: %i", dwErr);
 			WriteRecordToTextFile(szRecord);

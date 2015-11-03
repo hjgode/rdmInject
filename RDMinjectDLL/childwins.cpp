@@ -18,38 +18,51 @@ HWND FindChildWindowByParent(HWND hWndTopLevel, TCHAR* szChildClassName)
     HWND hwndCopyOfCur = NULL;
     TCHAR szWindowClass[MAX_PATH];
 
+	DEBUGMSG(1, (L"FindChildWindowByParent...Main is 0x%08x, looking for WinClass='%s'\n", hWndTopLevel, szChildClassName));
     do
     {
+		DEBUGMSG(1, (L"FindChildWindowByParent...hwndCur is 0x%08x\n", hwndCur));
         // Is the current child null?
         if (NULL == hwndCur)
         {
             // get the first child
             hwndCur = GetWindow(hWndTopLevel, GW_CHILD);
+			DEBUGMSG(1, (L"FindChildWindowByParent...GetFirstChild->hwndCur is 0x%08x\n", hwndCur));
         }
         else
         {
             hwndCopyOfCur = hwndCur;
             // at this point hwndcur may be a parent of other windows
             hwndCur = GetWindow(hwndCur, GW_CHILD);
+			DEBUGMSG(1, (L"FindChildWindowByParent...GetNextChild->hwndCur is 0x%08x\n", hwndCur));
 
             // in case it's not a parent, does it have "brothers"?
-            if (NULL == hwndCur)
-                hwndCur = GetWindow(hwndCopyOfCur, GW_HWNDNEXT);
+			if (NULL == hwndCur){
+				hwndCur = GetWindow(hwndCopyOfCur, GW_HWNDNEXT);
+				DEBUGMSG(1, (L"FindChildWindowByParent...GW_HWNDNEXT->hwndCur is 0x%08x\n", hwndCur));
+			}
         }
 
         //if we found a window (child or "brother"), let's see if it's the one we were looking for
         if (NULL != hwndCur)
         {
+			DEBUGMSG(1, (L"FindChildWindowByParent...GetClassName->hwndCur is 0x%08x\n", hwndCur));
 			//get class name of window
             GetClassName(hwndCur, szWindowClass, MAX_PATH-2);
 			//compare with what we look for
-			if(wcsicmp(szWindowClass, szChildClassName)==0)
+			if(wcsicmp(szWindowClass, szChildClassName)==0){
+				DEBUGMSG(1, (L"FindChildWindowByParent...GetClassName match found.\n"));
 				bFound=TRUE;
+			}
         }
-        else
+		else{
+			DEBUGMSG(1, (L"FindChildWindowByParent...Nothing found break.\n"));
             break;
+		}
     }
     while (!bFound);
+
+	DEBUGMSG(1, (L"FindChildWindowByParent...EXIT: ->hwndCur is 0x%08x, bFound=%i\n", hwndCur, bFound));
 
     //found!
     return hwndCur;

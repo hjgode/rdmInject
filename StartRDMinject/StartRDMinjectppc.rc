@@ -40,7 +40,7 @@ IDI_STARTRDMINJECT      ICON                    "StartRDMinject.ico"
 
 IDR_MENU MENU 
 BEGIN
-    POPUP "Help"
+    POPUP "Options"
     BEGIN
         MENUITEM "About",                       IDM_HELP_ABOUT
         MENUITEM "Activate InjectDLL",          IDM_ACTIVATE

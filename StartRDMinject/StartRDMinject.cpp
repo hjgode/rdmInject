@@ -10,7 +10,17 @@
 	#define TH32CS_SNAPNOHEAPS 0x40000000
 #endif
 
+#include <itc50.h>
+#pragma comment (lib, "itc50.lib")
+
 #define INJECT_DLL_NAME L"\\Windows\\RDMinjectDll.dll"
+int bInjectDLLloaded=0;
+int bInjectDLLwasLoaded=0;
+
+LPTSTR TextArray [] = {
+    L"InjectDLL not loaded",
+    L"InjectDLL is loaded",
+};
 
 #define MAX_LOADSTRING 100
 
@@ -615,6 +625,47 @@ DWORD RemoveDllNameFromRegistry(TCHAR *szDllName){
 
 }
 
+BOOL ExistsInjecDLL(TCHAR *szDllName){
+	int lRet=0;
+	HKEY hKeyReg=NULL;
+	//Does the key exist?
+	DEBUGMSG(1, (L"ExistsInjecDLL for '%s'...\n", szDllName));
+	if ((lRet = RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"System\\Kernel", 0, KEY_ALL_ACCESS, &hKeyReg))!=ERROR_SUCCESS){
+		RegCloseKey(hKeyReg);
+		DEBUGMSG(1, (L"...Dll does NOT exist in Registry\n"));
+		return 0;
+	}
+	//is there a InjectDLL key?
+	DWORD dwType=REG_MUI_SZ;
+	DWORD cbBytes = 2048;
+	BYTE* pBytes = (BYTE*) malloc(2048);
+	//Read the value
+	if ((lRet = RegQueryValueEx(hKeyReg,
+		                      L"InjectDLL",
+							  NULL,
+							  &dwType,
+							  pBytes,
+							  &cbBytes)) == ERROR_SUCCESS) //InjectDLL key is there
+	{
+		if (wcsstr((TCHAR*)pBytes, szDllName)!=NULL){
+			RegCloseKey(hKeyReg);
+			DEBUGMSG(1, (L"...Dll exists in Registry\n"));
+			return 1;
+		}
+		else{
+			RegCloseKey(hKeyReg);
+			DEBUGMSG(1, (L"...Dll does NOT exist in Registry\n"));
+			return 0;
+		}
+	}
+	else{
+		RegCloseKey(hKeyReg);
+		DEBUGMSG(1, (L"...Dll does NOT exist in Registry\n"));
+		return 0;
+	}
+
+}
+
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
                    LPTSTR    lpCmdLine,
@@ -755,6 +806,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     int wmId, wmEvent;
     PAINTSTRUCT ps;
     HDC hdc;
+	RECT rect;
 
     static SHACTIVATEINFO s_sai;
 	
@@ -768,9 +820,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
 				case IDM_ACTIVATE:
 					AddDllNameToRegistry(INJECT_DLL_NAME);
+					bInjectDLLloaded=ExistsInjecDLL(INJECT_DLL_NAME);
+					InvalidateRect(hWnd, NULL, TRUE);
+					
 					break;
 				case IDM_DEACTIVATE:
 					RemoveDllNameFromRegistry(INJECT_DLL_NAME);
+					bInjectDLLloaded=ExistsInjecDLL(INJECT_DLL_NAME);
+					InvalidateRect(hWnd, NULL, TRUE);
 					break;
                 case IDM_HELP_ABOUT:
                     DialogBox(g_hInst, (LPCTSTR)IDD_ABOUTBOX, hWnd, About);
@@ -781,6 +838,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 default:
                     return DefWindowProc(hWnd, message, wParam, lParam);
             }
+			if(bInjectDLLloaded!=bInjectDLLwasLoaded){
+				//REBOOT needed
+				if( MessageBox(hWnd, L"changes need a reboot. Reboot now?", L"injectDLL changed", MB_YESNO | MB_ICONQUESTION) == IDYES){
+					ITCWarmBoot();
+				}
+			}
             break;
         case WM_CREATE:
             SHMENUBARINFO mbi;
@@ -803,19 +866,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // Initialize the shell activate info structure
             memset(&s_sai, 0, sizeof (s_sai));
             s_sai.cbSize = sizeof (s_sai);
-
+			
+			bInjectDLLwasLoaded=ExistsInjecDLL(INJECT_DLL_NAME);
+			bInjectDLLloaded=bInjectDLLwasLoaded;
 			//prepare injection
-			AddDllNameToRegistry(INJECT_DLL_NAME);
+			//AddDllNameToRegistry(INJECT_DLL_NAME);
 			//possibly kill and start a new instance
 			Sleep(3000);
+#ifndef DEBUG
 			startRDM();
-
+#endif
             break;
         case WM_PAINT:
             hdc = BeginPaint(hWnd, &ps);
             
             // TODO: Add any drawing code here...
-            
+			GetClientRect(hWnd, &rect);
+			DEBUGMSG(1, (L"drawText '%s'\n", TextArray[bInjectDLLloaded]));
+			DrawText(hdc, TextArray[bInjectDLLloaded], -1, &rect, DT_CENTER);
+             
             EndPaint(hWnd, &ps);
             break;
         case WM_DESTROY:
@@ -825,7 +894,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//RemoveDllNameFromRegistry(INJECT_DLL_NAME);
 
             break;
-
+		case WM_QUIT:
+			if(bInjectDLLloaded!=bInjectDLLwasLoaded){
+				//REBOOT needed
+				if( MessageBox(HWND_TOPMOST, L"changes need a reboot. Reboot now?", L"injectDLL changed", MB_YESNO | MB_ICONQUESTION) == IDYES){
+					ITCWarmBoot();
+				}
+			}
+			break;
         case WM_ACTIVATE:
             // Notify shell of our activate message
             SHHandleWMActivate(hWnd, wParam, lParam, &s_sai, FALSE);
