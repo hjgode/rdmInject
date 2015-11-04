@@ -871,8 +871,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			bInjectDLLloaded=bInjectDLLwasLoaded;
 			//prepare injection
 			//AddDllNameToRegistry(INJECT_DLL_NAME);
-			//possibly kill and start a new instance
-			Sleep(3000);
+			//possibly kill and start a new instance, NO: change requires a reboot!
+			//Sleep(3000);
 #ifndef DEBUG
 			startRDM();
 #endif

@@ -6,6 +6,7 @@
 
 #define RDM_MSG_QUEUE L"RDM_WM_MSGQUEUE" //RDM msg queue for WM_ messages
 HANDLE h_RDM_msgQueue;
+#define MODULE_FILENAME L"\\Windows\\wpctsc.exe" //which modul to hook
 
 typedef struct {
 	HWND hWnd;
@@ -112,69 +113,9 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 		case WM_SIZE:
 			DEBUGMSG(1, (L"Got WM_SIZE with wP=0x%08x, lP=0x%08x\n", wParam, lParam));
 			break;
-		// This message is sent when an application passes data to another 
-		// application. 
-//		case WM_COPYDATA:
-//			{
-//#if DEBUG
-//				WriteRecordToTextFile(L"WM_COPYDATA");
-//#endif
-//
-//				// COPYDATASTRUCT 
-//				// http://msdn.microsoft.com/en-us/library/aa922015.aspx
-//
-//				// dwData specifies the barcode symbology
-//				//        Sse the Symbology Type.h header files
-//				//
-//				// cbData specifies the size, in bytes, of the barcode 
-//				//        data pointed to by the lpData member. 
-//				//
-//				// lpData points to the barcode data
-//
-//				COPYDATASTRUCT* data = (COPYDATASTRUCT*)lParam;
-//
-//				// Passed this point, feel free to manipulate the 
-//				// barcode data as/if needed...
-//
-//				// In the below example, we wrap the barcode data with
-//				// 'Double Chevron Left' and 'Double Chevron Right' characters
-//				// if the barcode symbology is UPC-A
-//
-//				if (data->dwData == ScsSymbology_UPCA)
-//				{
-//					int size = (data->cbData + 3) * sizeof(WCHAR);
-//					WCHAR* strData = (WCHAR*)LocalAlloc(LPTR, size);
-//
-//					wcscpy(strData, L"«"); // 'Double Chevron Left' character
-//					memcpy(&strData[1], data->lpData, data->cbData);
-//					wcscat(strData, L"»"); // 'Double Chevron Right' character
-//
-//#if DEBUG
-//					WriteRecordToTextFile(strData);
-//#endif
-//
-//					// Momentarely save lpData and cbData
-//					PVOID oldPtr = data->lpData;
-//					DWORD oldData = data->cbData;
-//
-//					// Copy back the (altered) barcode data to the 
-//					// COPYDATASTRUCT structure
-//					data->cbData = (wcslen(strData)) * sizeof(WCHAR);
-//					data->lpData = (PVOID)(LPCTSTR)strData;
-//
-//					LRESULT lRet = CallWindowProc(RDMWndFunc, window, message, wParam, lParam);
-//					LocalFree(strData);
-//
-//					// Restore lpData and cbData
-//					data->lpData = oldPtr;
-//					data->cbData = oldData;
-//
-//					return lRet;
-//				}
-//			}
-//			break;
 
 		case WM_CLOSE:
+			//restore old WndProc address
 			SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)RDMWndFunc);
 			break;
 
@@ -187,6 +128,7 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 
 DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 {
+	WriteRecordToTextFile(L"starting watch thread, set exit event");
 	hExitEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	DWORD dwError =0;
 	TCHAR szError[MAX_PATH] = {0};
@@ -214,8 +156,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		if (dwRet == WAIT_TIMEOUT)
 		{
 #if DEBUG
-			wsprintf(szError, 
-				L"WaitForSingleObject() timed out.");
+			wsprintf(szError, L"WaitForSingleObject() timed out.");
 			WriteRecordToTextFile(szError);
 #endif
 			continue;
@@ -224,8 +165,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		if (dwRet == WAIT_OBJECT_0 + 0) // hExitEvent signaled!
 		{
 #if DEBUG
-			wsprintf(szError, 
-				L"'Exit' event has been signaled.");
+			wsprintf(szError, L"'Exit' event has been signaled.");
 			WriteRecordToTextFile(szError);
 #endif
 			break;
@@ -254,8 +194,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 		if (dwRet == WAIT_TIMEOUT)
 		{
 #if DEBUG
-			wsprintf(szError, 
-				L"WaitForSingleObject() timed out.");
+			wsprintf(szError, L"WaitForSingleObject() timed out.");
 			WriteRecordToTextFile(szError);
 #endif
 			continue;
@@ -283,6 +222,8 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	wsprintf(szError, L"child window has handle %i (0x%08x)", hChildWin, hChildWin);
 	WriteRecordToTextFile(szError);
 #endif
+	///TODO check if hwndchild or hwndRDM???
+	///TESTED: In both cases use hWndRDM, but we need to wait for UIMainClass being loaded before we can start here
 	if(hChildWin!=NULL){
 		DEBUGMSG(1, (L"### Using child window\n"));
 		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
@@ -307,6 +248,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	}
 	CloseHandle(hExitEvent);
 	hExitEvent = NULL;
+	WriteRecordToTextFile(L"EXIT watch thread");
 	return ERROR_SUCCESS;
 }
 
@@ -328,7 +270,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			return TRUE;
 		}
 
-		if (_wcsicmp(szModuleFileName, L"\\Windows\\wpctsc.exe") != 0){
+		if (_wcsicmp(szModuleFileName, MODULE_FILENAME) != 0){
 			wsprintf(szRecord, L"Compare ModuleFileName failed: %s", szModuleFileName);
 			WriteRecordToTextFile(szRecord);
 			return TRUE;
@@ -383,7 +325,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 		if ((GetModuleFileName(NULL, szModuleFileName, MAX_PATH)) == NULL)
 			return TRUE;
 
-		if (_wcsicmp(szModuleFileName, L"\\Windows\\wpctsc.exe") != 0)
+		if (_wcsicmp(szModuleFileName, MODULE_FILENAME) != 0)
 			return TRUE;
 
 #if DEBUG
@@ -395,15 +337,20 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 		WriteRecordToTextFile(szRecord);
 #endif
 	
-		if(h_RDM_msgQueue!=NULL)
-			CloseHandle(h_RDM_msgQueue);
+		if(h_RDM_msgQueue!=NULL){
+			WriteRecordToTextFile(L"closing msgqueue");
+			CloseMsgQueue(h_RDM_msgQueue);
+			//CloseHandle(h_RDM_msgQueue);
+		}
 
 		if (hExitEvent != NULL)
 		{
+			WriteRecordToTextFile(L"set exit event");
 			if (SetEvent(hExitEvent))
 				WaitForSingleObject(hThread, 2000);
 			CloseHandle(hExitEvent);
 		}
+		WriteRecordToTextFile(L"close thread handle");
 		CloseHandle(hThread);
 	}
     return TRUE;

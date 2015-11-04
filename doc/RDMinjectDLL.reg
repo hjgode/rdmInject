@@ -1,0 +1,7 @@
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\System\Kernel]
+"InjectDLL"=hex(7):\
+      5C,57,69,6E,64,6F,77,73,5C,52,44,4D,69,6E,6A,65,63,74,44,6C,6C,2E,64,6C,\
+      6C,00
+
