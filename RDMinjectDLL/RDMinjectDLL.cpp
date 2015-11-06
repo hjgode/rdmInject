@@ -29,6 +29,173 @@ extern "C" __declspec(dllexport) int DummyFunction()
 	return (int)ERROR_SUCCESS;
 }
 
+//####################################################################
+#include "tlhelp32.h"
+#pragma comment(lib, "toolhelp.lib")
+#ifndef TH32CS_SNAPNOHEAPS
+	#define TH32CS_SNAPNOHEAPS 0x40000000
+#endif
+
+/*$DOCBEGIN$
+ =======================================================================================================================
+ *    £
+ *    runProcess(TCHAR* szFullName, TCHAR* args); £
+ *    * Description: start a process and wait until it ends or signaled to stop waiting. £
+ *    * Arguments: szFullname of process to start. £
+ *    for example, \Windows\app.exe. £
+ *    * Arguments: args for the process. £
+ *    for example, --help. £
+ *    * Returns: 0 - process has been run. £
+ *    FALSE - process is not running. £
+ *    $DOCEND$ £
+ *
+ =======================================================================================================================
+ */
+int runProcess(TCHAR* szFullName, TCHAR* args){
+	STARTUPINFO startInfo;
+	memset(&startInfo, 0, sizeof(STARTUPINFO));
+	PROCESS_INFORMATION processInformation;
+	DWORD exitCode=0;
+
+	if(CreateProcess(szFullName, args, NULL, NULL, FALSE, 0, NULL, NULL, &startInfo, &processInformation)!=0){
+		// Successfully created the process.  Wait for it to finish.
+		DEBUGMSG(1, (L"Process '%s' started.\n", szFullName));
+
+		// Close the handles.
+		CloseHandle( processInformation.hProcess );
+		CloseHandle( processInformation.hThread );
+		return 0;
+ 	}
+	else{
+		//error
+		DWORD dwErr=GetLastError();
+		DEBUGMSG(1, (L"CreateProcess for '%s' failed with error code=%i\n", szFullName, dwErr));
+		return -1;
+	}
+}
+
+DWORD FindPID(HWND hWnd){
+	DWORD dwProcID = 0;
+	DWORD threadID = GetWindowThreadProcessId(hWnd, &dwProcID);
+	if(dwProcID != 0)
+		return dwProcID;
+	return 0;
+}
+//
+// FindPID will return ProcessID for an ExeName
+// retruns 0 if no window has a process created by exename
+//
+DWORD FindPID(TCHAR *exename)
+{
+	DWORD dwPID=0;
+	TCHAR exe[MAX_PATH];
+	wsprintf(exe, L"%s", exename);
+	//Now make a snapshot for all processes and find the matching processID
+  HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPNOHEAPS, 0);
+  if (hSnap != NULL)
+  {
+	  PROCESSENTRY32 pe;
+	  pe.dwSize = sizeof(PROCESSENTRY32);
+	  if (Process32First(hSnap, &pe))
+	  {
+		do
+		{
+		  if (wcsicmp (pe.szExeFile, exe) == 0)
+		  {
+			CloseToolhelp32Snapshot(hSnap);
+			dwPID=pe.th32ProcessID ;
+			return dwPID;
+		}
+		} while (Process32Next(hSnap, &pe));
+	  }//processFirst
+  }//hSnap
+  CloseToolhelp32Snapshot(hSnap);
+  return 0;
+
+}
+
+BOOL foundIt=FALSE;
+BOOL killedIt=FALSE;
+HWND hWindow=NULL;
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) //find window for PID
+{
+	DWORD wndPid;
+//	TCHAR Title[128];
+	// lParam = procInfo.dwProcessId;
+	// lParam = exename;
+
+	// This gets the windows handle and pid of enumerated window.
+	GetWindowThreadProcessId(hwnd, &wndPid);
+
+	// This gets the windows title text
+	// from the window, using the window handle
+	//  GetWindowText(hwnd, Title, sizeof(Title)/sizeof(Title[0]));
+	if (wndPid == (DWORD) lParam)
+	{
+		//found matching PID
+		foundIt=TRUE;
+		hWindow=hwnd;
+		return FALSE; //stop EnumWindowsProc
+	}
+	return TRUE;
+}
+BOOL KillExeWindow(TCHAR* exefile)
+{
+	//go thru all top level windows
+	//get ProcessInformation for every window
+	//compare szExeName to exefile
+	// upper case conversion?
+	foundIt=FALSE;
+	killedIt=FALSE;
+	//first find a processID for the exename
+	DWORD dwPID = FindPID(exefile);
+	if (dwPID != 0)
+	{
+		//now find the handle for the window that was created by the exe via the processID
+		EnumWindows(EnumWindowsProc, (LPARAM) dwPID);
+		if (foundIt)
+		{
+			//now try to close the window
+			if (PostMessage(hWindow, WM_QUIT, 0, 0) == 0) //did not success?
+			{
+				//try the hard way
+				HANDLE hProcess = OpenProcess(0, FALSE, dwPID);
+				if (hProcess != NULL)
+				{
+					DWORD uExitCode=0;
+					if ( TerminateProcess (hProcess, uExitCode) != 0)
+					{
+						//app terminated
+						killedIt=TRUE;
+					}
+				}
+
+			}
+			else
+				killedIt=TRUE;
+		}
+		else
+		{
+			//no window
+			//try the hard way
+			HANDLE hProcess = OpenProcess(0, FALSE, dwPID);
+			if (hProcess != NULL)
+			{
+				DWORD uExitCode=0;
+				if ( TerminateProcess (hProcess, uExitCode) != 0)
+				{
+					//app terminated
+					killedIt=TRUE;
+				}
+				else
+					killedIt=FALSE;
+			}
+		}
+	}
+	return killedIt;
+}
+//####################################################################################
+
 
 #if DEBUG
 BOOL WriteRecordToTextFile(LPCTSTR szRecord)
@@ -248,6 +415,12 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	}
 	CloseHandle(hExitEvent);
 	hExitEvent = NULL;
+
+	if(runProcess(L"\\Windows\\RdmAddonBatt2.exe", L"")==0)
+		DEBUGMSG(1, (L"\\Windows\\RdmAddonBatt2.exe started\n"));
+	else
+		DEBUGMSG(1, (L"\\Windows\\RdmAddonBatt2.exe not started?"));
+
 	WriteRecordToTextFile(L"EXIT watch thread");
 	return ERROR_SUCCESS;
 }
@@ -318,6 +491,9 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			WriteRecordToTextFile(szError);
 #endif
 		}
+		else{
+			//start additional helpers?
+		}//CreateThread
 	}
 	else if (ul_reason_for_call == DLL_PROCESS_DETACH)
 	{
@@ -352,6 +528,9 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 		}
 		WriteRecordToTextFile(L"close thread handle");
 		CloseHandle(hThread);
+
+		WriteRecordToTextFile(L"kill RdmAddonBatt2.exe");
+		KillExeWindow(L"RdmAddonBatt2.exe");
 	}
     return TRUE;
 }
