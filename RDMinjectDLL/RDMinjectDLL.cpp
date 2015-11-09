@@ -421,6 +421,11 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	else
 		DEBUGMSG(1, (L"\\Windows\\RdmAddonBatt2.exe not started?"));
 
+	if(runProcess(L"\\Windows\\RdmAddonWiFi.exe", L"")==0)
+		DEBUGMSG(1, (L"\\Windows\\RdmAddonWiFi.exe started\n"));
+	else
+		DEBUGMSG(1, (L"\\Windows\\RdmAddonWiFi.exe not started?"));
+
 	WriteRecordToTextFile(L"EXIT watch thread");
 	return ERROR_SUCCESS;
 }
