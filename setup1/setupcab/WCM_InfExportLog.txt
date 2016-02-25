@@ -1,0 +1,9 @@
+<<< 2-25-2016 14.26.21 >>>
+
+Creating INF file...
+    D:\svn\git\rdmInject\setup1\setupcab\Honeywell RDMinjectDLL1\Honeywell RDMinjectDLL1.inf
+
+Extracting files...
+    D:\svn\git\rdmInject\setup1\setupcab\Honeywell RDMinjectDLL1\Windows\RDMinjectDLL.dll - 8192 bytes
+
+

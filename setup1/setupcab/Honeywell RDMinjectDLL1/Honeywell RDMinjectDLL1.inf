@@ -1,0 +1,51 @@
+;
+; This file was automatically generated using:
+;
+;      WinCE CAB Manager 3, 0, 0, 22
+;      Copyright (c) 2001-2008 OCP Software, Inc.
+;      All Rights Reserved
+;
+; For more information on this product, please visit:
+;
+;      http://www.ocpsoftware.com
+;
+
+[SOURCE FILE]
+Name=RDMinjectDLL1.cab
+Path=D:\svn\git\rdmInject\setup1\RDMinjectDLL1.cab
+AllowUninstall=TRUE
+
+[Version]
+Signature="$Chicago$"
+CESignature="$Windows CE$"
+Provider="Honeywell"
+
+[CEStrings]
+AppName="RDMinjectDLL1"
+
+[CEDevice]
+ProcessorType=0
+VersionMin=0.0
+VersionMax=0.0
+BuildMin=0
+BuildMax=0
+
+[SourceDisksNames]
+1=,Source1,,"Windows"
+
+[SourceDisksFiles]
+"RDMinjectDLL.dll"=1
+
+[CopyFiles1]
+"RDMinjectDLL.dll",,,0x00000001
+
+[DestinationDirs]
+CopyFiles1=0,"\Windows"
+
+[AddRegistry]
+HKLM,"System\Kernel","InjectDLL",0x00010000,"\Windows\RDMinjectDLL.dll"
+
+[DefaultInstall]
+CopyFiles=CopyFiles1
+AddReg=AddRegistry
+

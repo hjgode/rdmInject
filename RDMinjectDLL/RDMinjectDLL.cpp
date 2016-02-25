@@ -197,10 +197,10 @@ BOOL KillExeWindow(TCHAR* exefile)
 //####################################################################################
 
 
-#if DEBUG
 BOOL WriteRecordToTextFile(LPCTSTR szRecord)
 {
 	BOOL   bRet = FALSE;
+#if DEBUG
 	HANDLE hTextFile = INVALID_HANDLE_VALUE;
 	TCHAR  szBuffer[MAX_PATH] = {0};
 
@@ -245,10 +245,10 @@ BOOL WriteRecordToTextFile(LPCTSTR szRecord)
 	CloseHandle(hTextFile);
 	LocalFree(chBuffer);
 
+#endif
 	return bRet;
 }
 
-#endif
 
 LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
