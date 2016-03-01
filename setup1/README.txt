@@ -21,8 +21,28 @@ RDM window.
 
 There is no uninstall possible, you need to clean boot the device.
 
+Alternatively you can change the registry key value inside 
+[HKLM]\System\Kernel\InjectDll from
+  "\Windows\rdmInject.dll"
+to
+  "\Windows\rdmInject.dll1"
+Then reboot the device and the tool is in-active.
+
 ## Details
 
 The installation cab RDMinjectDLL1.cab file copies RDMInjectDLL.dll to
 \Windows directory and sets the registry key [HKLM]\System\Kernel\InjectDll to
-the MULTI_SZ string "\Windows\RDMinject.dll".  
+the MULTI_SZ string "\Windows\RDMinject.dll".
+
+# History
+v 0.1
+    inital version
+  0.2
+    added code to control the Software Input Panel (SIP) position
+    The SIP is moved down if wpctsc.exe session runs in full screen mode
+    If a task switch is done during full screen session, the SIP position is
+    not restored and covers the standard menu bar.
+    The SIP is restored if the session is ended
+    It is recommended to control the SIP using a keyboard shortcut. Then it can
+    be shown or hidden at any time. So you can uncover the menu bar even if the
+    SIP is at top bottom position.

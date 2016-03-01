@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "RDM injectDLL1"
-!define PRODUCT_VERSION "0.1"
+!define PRODUCT_VERSION "0.2"
 !define PRODUCT_PUBLISHER "HSM"
 !define PRODUCT_WEB_SITE "http://www.honeywellaidc.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\RDMinjectDLL1.cab"
@@ -39,7 +39,7 @@
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "RdmInjectDll_v01_Setup.exe"
+OutFile "RdmInjectDll_v02_Setup.exe"
 InstallDir "$PROGRAMFILES\Honeywell\RdmInjectDLL1"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
