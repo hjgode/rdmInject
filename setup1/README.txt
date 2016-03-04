@@ -46,3 +46,5 @@ v 0.1
     It is recommended to control the SIP using a keyboard shortcut. Then it can
     be shown or hidden at any time. So you can uncover the menu bar even if the
     SIP is at top bottom position.
+  0.3
+    changed code to work with D70e wearable firmware 40.04

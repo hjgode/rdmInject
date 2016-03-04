@@ -1,12 +1,38 @@
 // RDMinjectDLL.cpp : Defines the entry point for the DLL application.
 //
 
+#pragma comment (exestr, "RDMInjectDLL v0.3")
+
 #include "stdafx.h"
 #include "childwins.h"
+#include "registry.h"
 
 #define RDM_MSG_QUEUE L"RDM_WM_MSGQUEUE" //RDM msg queue for WM_ messages
 HANDLE h_RDM_msgQueue;
-#define MODULE_FILENAME L"\\Windows\\wpctsc.exe" //which modul to hook
+//#define MODULE_FILENAME L"\\Windows\\wpctsc.exe" //which modul to hook
+
+#define regMainKey L"\\Software\\Honeywell\\RDMinjectDLL"
+#define defaultModuleFilename L"\\Windows\\wpctsc.exe"
+
+TCHAR	MODULE_FILENAME[MAX_PATH]={defaultModuleFilename}; //which modul to hook
+
+TCHAR	waitForClass[MAX_PATH] = {L"TSSHELLWND"};				//which win class to look for in first stage
+TCHAR	waitForTitle[MAX_PATH] = {NULL};							//which win title to look for in first stage
+//second window?, if both NULL we do not wait for a second window
+TCHAR	waitForClassSecond[MAX_PATH] = {NULL}; //L"Dock";			//which win class to look for in second stage
+TCHAR	waitForTitleSecond[MAX_PATH] = {NULL};						//which win class to look for in second stage
+BOOL	bSecondWndIsChild = FALSE;						//is second window to be treated as a child of first window?
+
+TCHAR	slaveExe[MAX_PATH] = {L"\\Windows\\IBaddBtnCAM.exe"};		//which exe should be started after first and second stage is confirmed
+TCHAR	slaveArgs[MAX_PATH]={L""};									//arguments to be passed to exe
+
+BOOL	bEnableSubClassWindow=FALSE;					//is sublcassing needed
+DWORD	dwWINI_CHANGEDLPARM=132960904;
+DWORD	dwWINI_CHANGEDWPARM=224;
+
+//forward declarations
+void writeReg();
+void readReg();
 
 typedef struct {
 	HWND hWnd;
@@ -249,6 +275,84 @@ BOOL WriteRecordToTextFile(LPCTSTR szRecord)
 	return bRet;
 }
 
+int getMenuHeight(){
+	//system function to get menu height
+	int iMnuHeight = GetSystemMetrics(SM_CYMENU);  //26 is incorrect!
+	DEBUGMSG(1, (L"Menu Height is %i\n", iMnuHeight));
+	//get menu height
+	HWND hwndMenu=FindWindow(L"menu_worker",NULL);
+	if(hwndMenu!=INVALID_HANDLE_VALUE){
+		RECT rectMnu;
+		GetWindowRect(hwndMenu, &rectMnu);
+		iMnuHeight=rectMnu.bottom-rectMnu.top;
+		DEBUGMSG(1, (L"Menu Height menu_worker is %i\n", iMnuHeight));
+	}
+	return iMnuHeight;
+}
+
+int moveSIP(bool bRestore){
+	int iRet=0;
+	HWND hwndSIP = NULL;
+	RECT rectSIP;
+	//find the SIP win class: SipWndClass
+	hwndSIP = FindWindow(L"SipWndClass", NULL);
+	if(hwndSIP!=NULL){
+		DEBUGMSG(1, (L"Found SipWndClass\n"));
+		
+		//hard restore: 0/212, 800/412
+		//MoveWindow(hwndSIP, 0, 212, 800, 200, TRUE);
+
+		//is it shown?
+		if(GetWindowRect(hwndSIP, &rectSIP)){
+
+			DEBUGMSG(1, (L"SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom));
+			int iMH = getMenuHeight();
+			int iScreenHeight = GetSystemMetrics(SM_CYSCREEN);
+			int iSIPHeight=rectSIP.bottom-rectSIP.top;
+
+			DEBUGMSG(1, (L"screen height=%i, SIP height=%i, menu height=%i\n", iScreenHeight, iSIPHeight, iMH));
+			DEBUGMSG(1, (L"SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom));
+
+			//212 
+			//SIP height = 412 - 212 = 200
+			//480 - 212 = 268 => SIP height + MENU height
+			//480 - 200 - 68 <=> screenH - SIPH - menuH
+			int iNormalYpos=iScreenHeight-iSIPHeight-iMH;
+			DEBUGMSG(1, (L"y normal pos=%i\n", iNormalYpos));
+			if(!bRestore){
+				//possibly move it down, verify portait
+				if(rectSIP.left==0 && rectSIP.top==iNormalYpos && rectSIP.right==800){
+					DEBUGMSG(1, (L"Moving SipWndClass\n"));
+					//SetWindowPos(hwndSIP, NULL, rectSIP.left, 212 + iMH, 0, 0, SWP_NOOWNERZORDER | SWP_NOSIZE | SWP_NOZORDER );
+					//move SIP down for menuHeight
+					MoveWindow(hwndSIP, rectSIP.left, iNormalYpos+iMH, rectSIP.right, iSIPHeight, TRUE);
+					iRet=1;
+				}
+				else{
+					DEBUGMSG(1, (L"SipWndClass already moved or down\n"));
+					iRet=0;
+				}
+			}else{ //restore org position, 0/212, 800/412
+				DEBUGMSG(1, (L"RESTORE: Moving SipWndClass\n"));
+				// y-position = screen height - menuHeight - SIP height
+				MoveWindow(hwndSIP, rectSIP.left, iNormalYpos, rectSIP.right, iSIPHeight, TRUE);
+				iRet=1;
+			}
+		}
+		else{
+			DEBUGMSG(1, (L"GetWindowRect SipWndClass FAILED\n"));
+			iRet=-2;
+		}
+	}
+	else{
+		DEBUGMSG(1, (L"SipWndClass NOT FOUND\n"));
+		iRet=-3;
+	}
+	return iRet;
+}
+int moveSIP(){
+	return moveSIP(FALSE);
+}
 
 LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -256,6 +360,7 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 	wsprintf(szRecord, L"WM_: msg=0x%08x, wP=%i, lP=%i", message, wParam, lParam);
 	WriteRecordToTextFile(szRecord);
 	
+
 	WM_EVT_DATA myData;
 	myData.hWnd=window;
 	myData.msg=message;
@@ -270,10 +375,23 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 
 	switch (message)
 	{
+		case WM_CANCELMODE: //if ever called
+			//move SIP down
+			moveSIP();
+			break;
+		case 0x000007EF: //WM_USER + 1007  //if ever called
+			moveSIP(TRUE);
+			break;
 		case WM_WININICHANGE: //sent when SIP is shown, do not forward?
-			//if(lParam!=NULL){
-			if(lParam==133071496){
-//				DEBUGMSG(1, (L"Got WM_WININICHANGE with '%s'\n", (TCHAR)lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
+			/*sequence with
+			wP=0xFA lP=0x00
+			wP=0xE0 lP=0x07Ecd288
+			wP=0xFA lP=0x00
+			wP=0xE0 lP=0x07Ecd288
+			*/
+			if((lParam==0x07ecd288 && wParam==0xE0)||(lParam==0x00 && wParam==0xFA)) {
+				DEBUGMSG(1, (L"Got WM_WININICHANGE with wP=%i lP=%i\n", wParam, lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
+				moveSIP();
 				return 0; //lie about message handled
 			}
 			break;
@@ -283,6 +401,7 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 
 		case WM_CLOSE:
 			//restore old WndProc address
+			moveSIP(TRUE);
 			SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)RDMWndFunc);
 			break;
 
@@ -316,7 +435,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	}
 
 	DWORD dwRet = WAIT_OBJECT_0;
-	while ((hWndRDM = FindWindow(L"TSSHELLWND", NULL)) == NULL)
+	while ((hWndRDM = FindWindow(L"TSSHELLWND", NULL)) == NULL) //TODO change to var
 	{
 		dwRet = WaitForSingleObject(hExitEvent, 1000);
 
@@ -416,16 +535,12 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	CloseHandle(hExitEvent);
 	hExitEvent = NULL;
 
-	if(runProcess(L"\\Windows\\RdmAddonBatt2.exe", L"")==0)
-		DEBUGMSG(1, (L"\\Windows\\RdmAddonBatt2.exe started\n"));
-	else
-		DEBUGMSG(1, (L"\\Windows\\RdmAddonBatt2.exe not started?"));
-
-	if(runProcess(L"\\Windows\\RdmAddonWiFi.exe", L"")==0)
-		DEBUGMSG(1, (L"\\Windows\\RdmAddonWiFi.exe started\n"));
-	else
-		DEBUGMSG(1, (L"\\Windows\\RdmAddonWiFi.exe not started?"));
-
+	if(wcslen(slaveExe)>0){
+		if(runProcess(slaveExe, slaveArgs)==0)
+			DEBUGMSG(1, (L"%s started\n", slaveExe));
+		else
+			DEBUGMSG(1, (L"%s not started?", slaveExe));
+	}
 	WriteRecordToTextFile(L"EXIT watch thread");
 	return ERROR_SUCCESS;
 }
@@ -439,6 +554,8 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 	{
 		// Disable the DLL_THREAD_ATTACH and DLL_THREAD_DETACH notification calls
 		DisableThreadLibraryCalls ((HMODULE)hModule);
+
+		readReg();
 
 		TCHAR szModuleFileName[MAX_PATH+1] = {0};
 		TCHAR szRecord[MAX_PATH] = {0};
@@ -533,10 +650,129 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 		}
 		WriteRecordToTextFile(L"close thread handle");
 		CloseHandle(hThread);
-
-		WriteRecordToTextFile(L"kill RdmAddonBatt2.exe");
-		KillExeWindow(L"RdmAddonBatt2.exe");
+		if(wcslen(slaveExe)>0){
+			WriteRecordToTextFile(L"kill RdmAddonBatt2.exe");
+			KillExeWindow(L"RdmAddonBatt2.exe");
+		}
 	}
     return TRUE;
 }
 
+TCHAR* regStringVals[] = {	L"MODULE_FILENAME",	
+							L"waitForClass",	L"waitForTitle",	
+							L"waitForClassSecond",	L"waitForTitleSecond",	
+							L"slaveExe",	L"slaveArgs", L"WINI_CHANGEDLPARM", NULL};
+TCHAR* regStringDefaults[] = {L"\\windows\\wpctsc.exe", 
+							L"TSSHELLWND", NULL, 
+							NULL, NULL,
+							L"", L"", L"132960904"};
+void writeReg(){
+	int iRes=0;
+	wsprintf(MODULE_FILENAME, L"%s", defaultModuleFilename);
+	if(OpenKey(regMainKey)!=0)
+		iRes=OpenCreateKey(regMainKey);
+	if(iRes!=0){
+		DEBUGMSG(1, (L"could not open main reg key '%s'\n", regMainKey));
+		return;
+	}
+	int i=0;
+	do{
+		if(regStringDefaults[i]!=NULL){
+			if(RegWriteStr(regStringVals[i], regStringDefaults[i])!=0)
+				DEBUGMSG(1, (L"regwritestr failed for '%s': '%s'\n", regStringVals[i], regStringDefaults[i]));
+			else
+				DEBUGMSG(1, (L"regwritestr OK for '%s': '%s'\n", regStringVals[i], regStringDefaults[i]));
+		}
+		else
+		{
+			if(RegWriteStr(regStringVals[i], L"")!=0)
+				DEBUGMSG(1, (L"regwritestr failed for '%s': '%s'\n", regStringVals[i], regStringDefaults[i]));
+			else
+				DEBUGMSG(1, (L"regwritestr OK for '%s': '%s'\n", regStringVals[i], regStringDefaults[i]));
+		}
+		i++;
+	}while(regStringVals[i]!=NULL);
+
+	if(RegWriteDword(L"bSecondWndIsChild", (DWORD*)&bSecondWndIsChild)==0)
+		DEBUGMSG(1, (L"RegWriteDword OK for 'bSecondWndIsChild'\n"));
+	else
+		DEBUGMSG(1, (L"RegWriteDword FAILED for 'bSecondWndIsChild'\n"));
+
+	if(RegWriteDword(L"bEnableSubClassWindow", (DWORD*)&bEnableSubClassWindow)==0)
+		DEBUGMSG(1, (L"RegWriteDword OK for 'bEnableSubClassWindow'\n"));
+	else
+		DEBUGMSG(1, (L"RegWriteDword FAILED for 'bEnableSubClassWindow'\n"));
+	CloseKey();
+}
+
+void readReg(){
+	int iRes=0;
+	iRes=OpenKey(regMainKey);
+	if(iRes!=0){
+		DEBUGMSG(1, (L"could not open main reg key '%s'\n", regMainKey));
+		writeReg();
+		return;
+	}
+	TCHAR szTemp[MAX_PATH];
+	DWORD dwTemp=-1;
+	int i=0;
+	wsprintf(MODULE_FILENAME, L"%s", defaultModuleFilename);
+	do{
+		DWORD dwTemp=0;
+		if(RegReadStr(regStringVals[i], szTemp)!=0)
+			DEBUGMSG(1, (L"RegReadStr failed for '%s'\n", regStringVals[i]));
+		else{
+			DEBUGMSG(1, (L"RegReadStr OK for '%s': '%s'\n", regStringVals[i], szTemp));
+			if(wcscmp(regStringVals[i], L"MODULE_FILENAME")==0){
+				wsprintf(MODULE_FILENAME, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"waitForClass")==0){
+				wsprintf(waitForClass, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"waitForTitle")==0){
+				wsprintf(waitForTitle, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"waitForClassSecond")==0){
+				wsprintf(waitForClassSecond, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"waitForTitleSecond")==0){
+				wsprintf(waitForTitleSecond, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"slaveExe")==0){
+				wsprintf(slaveExe, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"slaveArgs")==0){
+				wsprintf(slaveArgs, L"%s",szTemp);
+			}
+			else if(wcscmp(regStringVals[i], L"WINI_CHANGEDLPARM")==0){
+				dwTemp = _wtol(szTemp);
+				if(dwTemp!=0)
+					dwWINI_CHANGEDLPARM=dwTemp;
+			}
+			else if(wcscmp(regStringVals[i], L"WINI_CHANGEDWPARM")==0){
+				dwTemp = _wtol(szTemp);
+				if(dwTemp!=0)
+					dwWINI_CHANGEDWPARM=dwTemp;
+			}
+			else{
+				DEBUGMSG(1, (L"found unknown reg key"));
+			}
+		}
+		i++;
+	}while(regStringVals[i]!=NULL);
+	
+	if(RegReadDword(L"bSecondWndIsChild", (DWORD*)&dwTemp)==0){
+		bSecondWndIsChild=(BOOL)dwTemp;
+		DEBUGMSG(1, (L"RegReadDword OK for 'bSecondWndIsChild':%i\n", bSecondWndIsChild));
+	}
+	else
+		DEBUGMSG(1, (L"RegReadDword FAILED for 'bSecondWndIsChild'\n"));
+
+	if(RegReadDword(L"bEnableSubClassWindow", (DWORD*)&dwTemp)==0){
+		bEnableSubClassWindow=(BOOL)dwTemp;
+		DEBUGMSG(1, (L"RegReadDword OK for 'bEnableSubClassWindow':%i\n", bEnableSubClassWindow));
+	}
+	else
+		DEBUGMSG(1, (L"RegReadDword FAILED for 'bEnableSubClassWindow'\n"));
+	CloseKey();
+}

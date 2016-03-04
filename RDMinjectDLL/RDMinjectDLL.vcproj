@@ -155,7 +155,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions=" /subsystem:windowsce,5.01"
-				OutputFile="$(OutDir)/RDMinjectDLL.dll"
+				OutputFile="$(OutDir)/RDMinjectDLL2.dll"
 				LinkIncremental="2"
 				DelayLoadDLLs="$(NOINHERIT)"
 				GenerateDebugInformation="true"
@@ -436,6 +436,10 @@
 			>
 			<File
 				RelativePath=".\childwins.h"
+				>
+			</File>
+			<File
+				RelativePath=".\registry.h"
 				>
 			</File>
 			<File
