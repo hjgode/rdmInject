@@ -2,22 +2,22 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9,00"
-	Name="moveSIP"
-	ProjectGUID="{F24EB7B3-19D8-4287-A46A-6C0358804BAA}"
-	RootNamespace="moveSIP"
+	Name="regTest"
+	ProjectGUID="{A7414C6A-A329-4711-B58D-CC5403AA7185}"
+	RootNamespace="regTest"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
 	<Platforms>
 		<Platform
-			Name="Windows Mobile 6.5.3 Professional DTK (ARMV4I)"
+			Name="Windows Mobile 6 Professional SDK (ARMV4I)"
 		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="Debug|Windows Mobile 6.5.3 Professional DTK (ARMV4I)"
+			Name="Debug|Windows Mobile 6 Professional SDK (ARMV4I)"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -64,11 +64,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions=" /subsystem:windowsce,5.02"
-				OutputFile="$(OutDir)/moveSIP.exe"
+				OutputFile="$(OutDir)/regTest.exe"
 				LinkIncremental="2"
 				DelayLoadDLLs="$(NOINHERIT)"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/moveSIP.pdb"
+				ProgramDatabaseFile="$(OutDir)/regTest.pdb"
 				SubSystem="0"
 				StackReserveSize="65536"
 				StackCommitSize="4096"
@@ -96,7 +96,7 @@
 			/>
 			<DeploymentTool
 				ForceDirty="-1"
-				RemoteDirectory="\Windows"
+				RemoteDirectory=""
 				RegisterOutput="0"
 				AdditionalFiles=""
 			/>
@@ -104,7 +104,7 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Release|Windows Mobile 6.5.3 Professional DTK (ARMV4I)"
+			Name="Release|Windows Mobile 6 Professional SDK (ARMV4I)"
 			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
 			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
 			ConfigurationType="1"
@@ -151,11 +151,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions=" /subsystem:windowsce,5.02"
-				OutputFile="$(OutDir)/moveSIP.exe"
+				OutputFile="$(OutDir)/regTest.exe"
 				LinkIncremental="1"
 				DelayLoadDLLs="$(NOINHERIT)"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(OutDir)/moveSIP.pdb"
+				ProgramDatabaseFile="$(OutDir)/regTest.pdb"
 				SubSystem="0"
 				StackReserveSize="65536"
 				StackCommitSize="4096"
@@ -202,14 +202,14 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\moveSIP.cpp"
+				RelativePath=".\regTest.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
-					Name="Debug|Windows Mobile 6.5.3 Professional DTK (ARMV4I)"
+					Name="Debug|Windows Mobile 6 Professional SDK (ARMV4I)"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -217,7 +217,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|Windows Mobile 6.5.3 Professional DTK (ARMV4I)"
+					Name="Release|Windows Mobile 6 Professional SDK (ARMV4I)"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -231,6 +231,10 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath="..\RDMinjectDLL\registry.h"
+				>
+			</File>
 			<File
 				RelativePath=".\stdafx.h"
 				>

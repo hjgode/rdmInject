@@ -49,7 +49,7 @@ int moveSIP(bool bRestore){
 			DEBUGMSG(1, (L"y normal pos=%i\n", iNormalYpos));
 			if(!bRestore){
 				//possibly move it down, verify portait
-				if(rectSIP.left==0 && rectSIP.top==iNormalYpos && rectSIP.right==800){
+				if(rectSIP.left==0 && rectSIP.top==iNormalYpos/* && rectSIP.right==800 */){
 					DEBUGMSG(1, (L"Moving SipWndClass\n"));
 					//SetWindowPos(hwndSIP, NULL, rectSIP.left, 212 + iMH, 0, 0, SWP_NOOWNERZORDER | SWP_NOSIZE | SWP_NOZORDER );
 					//move SIP down for menuHeight
@@ -84,9 +84,15 @@ int moveSIP(){
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	moveSIP();
-	Sleep(2000);
-	moveSIP(TRUE);
+	if(argc==2){
+		DEBUGMSG(1, (L"argv[1]=%s\n", argv[1]));
+		if(wcsicmp(argv[1], L"movedown")==0)
+			moveSIP();
+	}
+	else {
+		DEBUGMSG(1, (L"restoring SIP pos\n"));
+		moveSIP(TRUE);
+	}
 	return 0;
 }
 

@@ -22,6 +22,7 @@ Provider="Honeywell"
 
 [CEStrings]
 AppName="RDMinjectDLL1"
+InstallDir="\"
 
 [CEDevice]
 ProcessorType=0
@@ -44,6 +45,17 @@ CopyFiles1=0,"\Windows"
 
 [AddRegistry]
 HKLM,"System\Kernel","InjectDLL",0x00010000,"\Windows\RDMinjectDLL.dll"
+HKLM,"Software\Honeywell\RDMinjectDLL","bSupressAllWinIniChange",0x00010001,1
+HKLM,"Software\Honeywell\RDMinjectDLL","bEnableSubClassWindow",0x00010001,0
+HKLM,"Software\Honeywell\RDMinjectDLL","bSecondWndIsChild",0x00010001,0
+HKLM,"Software\Honeywell\RDMinjectDLL","WINI_CHANGEDLPARM",0x00000000,"132960904"
+HKLM,"Software\Honeywell\RDMinjectDLL","slaveArgs",0x00000000,""
+HKLM,"Software\Honeywell\RDMinjectDLL","slaveExe",0x00000000,""
+HKLM,"Software\Honeywell\RDMinjectDLL","waitForTitleSecond",0x00000000,""
+HKLM,"Software\Honeywell\RDMinjectDLL","waitForClassSecond",0x00000000,""
+HKLM,"Software\Honeywell\RDMinjectDLL","waitForTitle",0x00000000,""
+HKLM,"Software\Honeywell\RDMinjectDLL","waitForClass",0x00000000,"TSSHELLWND"
+HKLM,"Software\Honeywell\RDMinjectDLL","MODULE_FILENAME",0x00000000,"\windows\wpctsc.exe"
 
 [DefaultInstall]
 CopyFiles=CopyFiles1

@@ -1,7 +1,7 @@
 // RDMinjectDLL.cpp : Defines the entry point for the DLL application.
 //
 
-#pragma comment (exestr, "RDMInjectDLL v0.3")
+#pragma comment (exestr, "RDMInjectDLL v0.3b")
 
 #include "stdafx.h"
 #include "childwins.h"
@@ -29,6 +29,7 @@ TCHAR	slaveArgs[MAX_PATH]={L""};									//arguments to be passed to exe
 BOOL	bEnableSubClassWindow=FALSE;					//is sublcassing needed
 DWORD	dwWINI_CHANGEDLPARM=132960904;
 DWORD	dwWINI_CHANGEDWPARM=224;
+DWORD	bSupressAllWinIniChange=1;
 
 //forward declarations
 void writeReg();
@@ -296,8 +297,9 @@ int moveSIP(bool bRestore){
 	RECT rectSIP;
 	//find the SIP win class: SipWndClass
 	hwndSIP = FindWindow(L"SipWndClass", NULL);
+	TCHAR szTxt[MAX_PATH];
 	if(hwndSIP!=NULL){
-		DEBUGMSG(1, (L"Found SipWndClass\n"));
+		WriteRecordToTextFile(L"MoveSIP: Found SipWndClass\n");
 		
 		//hard restore: 0/212, 800/412
 		//MoveWindow(hwndSIP, 0, 212, 800, 200, TRUE);
@@ -305,47 +307,51 @@ int moveSIP(bool bRestore){
 		//is it shown?
 		if(GetWindowRect(hwndSIP, &rectSIP)){
 
-			DEBUGMSG(1, (L"SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom));
+			wsprintf(szTxt, L"MoveSIP: SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom);
+			WriteRecordToTextFile(szTxt);
 			int iMH = getMenuHeight();
 			int iScreenHeight = GetSystemMetrics(SM_CYSCREEN);
 			int iSIPHeight=rectSIP.bottom-rectSIP.top;
 
-			DEBUGMSG(1, (L"screen height=%i, SIP height=%i, menu height=%i\n", iScreenHeight, iSIPHeight, iMH));
-			DEBUGMSG(1, (L"SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom));
+			wsprintf(szTxt, L"MoveSIP: screen height=%i, SIP height=%i, menu height=%i\n", iScreenHeight, iSIPHeight, iMH);
+			WriteRecordToTextFile(szTxt);
+			wsprintf(szTxt, L"MoveSIP: SipWndClass rect = %i/%i, %i/%i\n", rectSIP.left, rectSIP.top, rectSIP.right, rectSIP.bottom);
+			WriteRecordToTextFile(szTxt);
 
 			//212 
 			//SIP height = 412 - 212 = 200
 			//480 - 212 = 268 => SIP height + MENU height
 			//480 - 200 - 68 <=> screenH - SIPH - menuH
 			int iNormalYpos=iScreenHeight-iSIPHeight-iMH;
-			DEBUGMSG(1, (L"y normal pos=%i\n", iNormalYpos));
+			wsprintf(szTxt, L"MoveSIP: y normal pos=%i\n", iNormalYpos);
+			WriteRecordToTextFile(szTxt);
 			if(!bRestore){
 				//possibly move it down, verify portait
-				if(rectSIP.left==0 && rectSIP.top==iNormalYpos && rectSIP.right==800){
-					DEBUGMSG(1, (L"Moving SipWndClass\n"));
+				if(rectSIP.left==0 && rectSIP.top==iNormalYpos /*&& rectSIP.right==800*/){
+					WriteRecordToTextFile(L"MoveSIP: Moving SipWndClass\n");
 					//SetWindowPos(hwndSIP, NULL, rectSIP.left, 212 + iMH, 0, 0, SWP_NOOWNERZORDER | SWP_NOSIZE | SWP_NOZORDER );
 					//move SIP down for menuHeight
 					MoveWindow(hwndSIP, rectSIP.left, iNormalYpos+iMH, rectSIP.right, iSIPHeight, TRUE);
 					iRet=1;
 				}
 				else{
-					DEBUGMSG(1, (L"SipWndClass already moved or down\n"));
+					WriteRecordToTextFile(L"MoveSIP: SipWndClass already moved or down\n");
 					iRet=0;
 				}
 			}else{ //restore org position, 0/212, 800/412
-				DEBUGMSG(1, (L"RESTORE: Moving SipWndClass\n"));
+				WriteRecordToTextFile(L"MoveSIP: RESTORE: Moving SipWndClass\n");
 				// y-position = screen height - menuHeight - SIP height
 				MoveWindow(hwndSIP, rectSIP.left, iNormalYpos, rectSIP.right, iSIPHeight, TRUE);
 				iRet=1;
 			}
 		}
 		else{
-			DEBUGMSG(1, (L"GetWindowRect SipWndClass FAILED\n"));
+			WriteRecordToTextFile(L"MoveSIP: GetWindowRect SipWndClass FAILED\n");
 			iRet=-2;
 		}
 	}
 	else{
-		DEBUGMSG(1, (L"SipWndClass NOT FOUND\n"));
+		WriteRecordToTextFile(L"MoveSIP: SipWndClass NOT FOUND\n");
 		iRet=-3;
 	}
 	return iRet;
@@ -375,23 +381,28 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 
 	switch (message)
 	{
-		case WM_CANCELMODE: //if ever called
-			//move SIP down
-			moveSIP();
-			break;
-		case 0x000007EF: //WM_USER + 1007  //if ever called
-			moveSIP(TRUE);
-			break;
+		//case WM_CANCELMODE: //if ever called
+		//	//move SIP down
+		//	moveSIP();
+		//	break;
+		//case 0x000007EF: //WM_USER + 1007  //if ever called
+		//	moveSIP(TRUE);
+		//	break;
 		case WM_WININICHANGE: //sent when SIP is shown, do not forward?
+			if(bSupressAllWinIniChange)
+				return 0; //lie about message handled
 			/*sequence with
 			wP=0xFA lP=0x00
 			wP=0xE0 lP=0x07Ecd288
 			wP=0xFA lP=0x00
 			wP=0xE0 lP=0x07Ecd288
+			
+			on Intermec CN70:
+			wP=0xE0 lP=0x07EE7288
 			*/
 			if((lParam==0x07ecd288 && wParam==0xE0)||(lParam==0x00 && wParam==0xFA)) {
 				DEBUGMSG(1, (L"Got WM_WININICHANGE with wP=%i lP=%i\n", wParam, lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
-				moveSIP();
+//				moveSIP();
 				return 0; //lie about message handled
 			}
 			break;
@@ -401,7 +412,7 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 
 		case WM_CLOSE:
 			//restore old WndProc address
-			moveSIP(TRUE);
+//			moveSIP(TRUE);
 			SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)RDMWndFunc);
 			break;
 
@@ -513,9 +524,11 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	if(hChildWin!=NULL){
 		DEBUGMSG(1, (L"### Using child window\n"));
 		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
+		moveSIP();
 	}else{
 		DEBUGMSG(1, (L"### Using main window\n"));
 		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
+		moveSIP();
 	}
 
 	if (RDMWndFunc == NULL)
@@ -527,6 +540,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 			dwError,
 			dwError);
 		WriteRecordToTextFile(szError);
+		moveSIP(TRUE);
 		return dwError;
 #else
 		return GetLastError();
@@ -654,6 +668,7 @@ BOOL APIENTRY DllMain( HANDLE hModule,
 			WriteRecordToTextFile(L"kill RdmAddonBatt2.exe");
 			KillExeWindow(L"RdmAddonBatt2.exe");
 		}
+		moveSIP(TRUE);
 	}
     return TRUE;
 }
@@ -702,6 +717,11 @@ void writeReg(){
 		DEBUGMSG(1, (L"RegWriteDword OK for 'bEnableSubClassWindow'\n"));
 	else
 		DEBUGMSG(1, (L"RegWriteDword FAILED for 'bEnableSubClassWindow'\n"));
+
+	if(RegWriteDword(L"bSupressAllWinIniChange", &bSupressAllWinIniChange)==0)
+		DEBUGMSG(1, (L"RegWriteDword OK for 'bSupressAllWinIniChange'\n"));
+	else
+		DEBUGMSG(1, (L"RegWriteDword FAILED for 'bSupressAllWinIniChange'\n"));
 	CloseKey();
 }
 
@@ -774,5 +794,13 @@ void readReg(){
 	}
 	else
 		DEBUGMSG(1, (L"RegReadDword FAILED for 'bEnableSubClassWindow'\n"));
+
+	if(RegReadDword(L"bSupressAllWinIniChange", &dwTemp)==0){
+		bSupressAllWinIniChange=dwTemp;
+		DEBUGMSG(1, (L"RegReadDword OK for 'bSupressAllWinIniChange':%i\n", bSupressAllWinIniChange));
+	}
+	else
+		DEBUGMSG(1, (L"RegReadDword FAILED for 'bSupressAllWinIniChange'\n"));
+
 	CloseKey();
 }

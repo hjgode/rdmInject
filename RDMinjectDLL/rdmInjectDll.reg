@@ -1,6 +1,15 @@
 REGEDIT4
 
-[HKEY_LOCAL_MACHINE\System\Kernel]
-"InjectDLL"=hex(7):\
-      52,44,4D,69,6E,6A,65,63,74,44,4C,4C,2E,64,6C,6C,00,00
+[HKEY_LOCAL_MACHINE\Software\Honeywell\RDMinjectDLL]
+"bSupressAllWinIniChange"=dword:00000001
+"bEnableSubClassWindow"=dword:00000000
+"bSecondWndIsChild"=dword:00000000
+"WINI_CHANGEDLPARM"="132960904"
+"slaveArgs"=""
+"slaveExe"=""
+"waitForTitleSecond"=""
+"waitForClassSecond"=""
+"waitForTitle"=""
+"waitForClass"="TSSHELLWND"
+"MODULE_FILENAME"="\\windows\\wpctsc.exe"
 

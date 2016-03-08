@@ -159,7 +159,7 @@ int RegReadDword(TCHAR *valuename, DWORD *value)
 		rc = OpenKey();
 	if (g_hkey != NULL)
 	{
-		rc = RegQueryValueEx(g_hkey, valuename, NULL, &dwType, (LPBYTE) dwResult, &dwSize);
+		rc = RegQueryValueEx(g_hkey, valuename, NULL, &dwType, (LPBYTE) &dwResult, &dwSize);
 		if (rc == ERROR_SUCCESS)
 		{
 			CloseKey();
