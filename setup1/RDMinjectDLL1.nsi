@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "RDM injectDLL1"
-!define PRODUCT_VERSION "03"
+!define PRODUCT_VERSION "04"
 !define PRODUCT_PUBLISHER "HSM"
 !define PRODUCT_WEB_SITE "http://www.honeywellaidc.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\RDMinjectDLL1.cab"

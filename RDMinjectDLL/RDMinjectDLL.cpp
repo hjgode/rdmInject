@@ -1,7 +1,7 @@
 // RDMinjectDLL.cpp : Defines the entry point for the DLL application.
 //
 
-#pragma comment (exestr, "RDMInjectDLL v0.3b")
+#pragma comment (exestr, "RDMInjectDLL v0.4")
 
 #include "stdafx.h"
 #include "childwins.h"
@@ -389,8 +389,10 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 		//	moveSIP(TRUE);
 		//	break;
 		case WM_WININICHANGE: //sent when SIP is shown, do not forward?
-			if(bSupressAllWinIniChange)
+			if(bSupressAllWinIniChange){
+				moveSIP();
 				return 0; //lie about message handled
+			}
 			/*sequence with
 			wP=0xFA lP=0x00
 			wP=0xE0 lP=0x07Ecd288
@@ -400,19 +402,21 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 			on Intermec CN70:
 			wP=0xE0 lP=0x07EE7288
 			*/
-			if((lParam==0x07ecd288 && wParam==0xE0)||(lParam==0x00 && wParam==0xFA)) {
+			if((wParam==0xE0 && lParam==0x07ecd288)||(lParam==0x00 && wParam==0xFA)) {
 				DEBUGMSG(1, (L"Got WM_WININICHANGE with wP=%i lP=%i\n", wParam, lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
-//				moveSIP();
+				moveSIP();
 				return 0; //lie about message handled
 			}
 			break;
 		case WM_SIZE:
 			DEBUGMSG(1, (L"Got WM_SIZE with wP=0x%08x, lP=0x%08x\n", wParam, lParam));
 			break;
-
+		case WM_KILLFOCUS:	// fired when session is ended
+			moveSIP(TRUE);
+			break;
 		case WM_CLOSE:
 			//restore old WndProc address
-//			moveSIP(TRUE);
+			moveSIP(TRUE);
 			SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)RDMWndFunc);
 			break;
 
@@ -524,11 +528,11 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 	if(hChildWin!=NULL){
 		DEBUGMSG(1, (L"### Using child window\n"));
 		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
-		moveSIP();
+//		moveSIP();
 	}else{
 		DEBUGMSG(1, (L"### Using main window\n"));
 		RDMWndFunc = (WNDPROC)SetWindowLong(hWndRDM, GWL_WNDPROC, (LONG)SubclassWndProc);
-		moveSIP();
+//		moveSIP();
 	}
 
 	if (RDMWndFunc == NULL)
@@ -540,7 +544,7 @@ DWORD WaitForProcessToBeUpAndReadyThread(PVOID)
 			dwError,
 			dwError);
 		WriteRecordToTextFile(szError);
-		moveSIP(TRUE);
+//		moveSIP(TRUE);
 		return dwError;
 #else
 		return GetLastError();

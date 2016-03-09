@@ -48,3 +48,27 @@ v 0.1
     SIP is at top bottom position.
   0.3
     changed code to work with D70e wearable firmware 40.04
+  0.4
+    added option to move SIP on all WININCHANGE messages
+    bSupressAllWinIniChange should be 1 to intercept and suppress all 
+    WININICHANGE messages
+    other registry settings may or mya not be used. DO NOT touch.
+    The wearable SIP indeed uses three different windows, only the ones aligned
+    to the left will be moved.
+
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\Software\Honeywell\RDMinjectDLL]
+"bSupressAllWinIniChange"=dword:00000001
+"bEnableSubClassWindow"=dword:00000000
+"bSecondWndIsChild"=dword:00000000
+"WINI_CHANGEDLPARM"="132960904"
+"slaveArgs"=""
+"slaveExe"=""
+"waitForTitleSecond"=""
+"waitForClassSecond"=""
+"waitForTitle"=""
+"waitForClass"="TSSHELLWND"
+"MODULE_FILENAME"="\\windows\\wpctsc.exe"
+
+    
