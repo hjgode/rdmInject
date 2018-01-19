@@ -4,7 +4,9 @@ REGEDIT4
 "bSupressAllWinIniChange"=dword:00000001
 "bEnableSubClassWindow"=dword:00000000
 "bSecondWndIsChild"=dword:00000000
+; this is AKU and Build Number dependend!...
 "WINI_CHANGEDLPARM"="132960904"
+;133005960
 "slaveArgs"=""
 "slaveExe"=""
 "waitForTitleSecond"=""

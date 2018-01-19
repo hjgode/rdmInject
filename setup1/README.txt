@@ -12,6 +12,7 @@ RDM window.
 ## Installation
 
 1. Copy the Installation cab file "RDMinjectDLL1.cab" onto the device
+    # For the CK75 use file RDMinjectDLL1_ck75.cab instead! #
 2. Start the mobile file explorer on the device
 3. In mobile file explorer browse to RDMinjectDLL1.cab on the device
 4. Tap on RDMinjectDLL1.cab to start the installation
@@ -55,6 +56,21 @@ v 0.1
     other registry settings may or mya not be used. DO NOT touch.
     The wearable SIP indeed uses three different windows, only the ones aligned
     to the left will be moved.
+  0.5
+    added code to read WININCHANGED lParam to be captured from registry value
+    WINI_CHANGEDLPARM.
+    For CK71 and same Intermec generation this value is 132960904
+    For CK75 the value is 133005960
+    
+    To examine the value, if the SIP shows and hides immediately although 
+    rdmInject is installed, use CE Remote Spy (ccspy.exe) and start a remote 
+    desktop session. Then look for window with class TSSHELLWND and select 
+    the entry. Now click on Menu "Spy" and "Messages". Then try to show the SIP
+    with the assigned key and watch the messages window for "WM_WINICHANGE"
+    messages and note the LPARAM value. The value has then to be converted from
+    hex to decimal and can then be used as WINI_CHANGEDLPARM value. Reboot the
+    device to activate the change.
+    
 
 REGEDIT4
 

@@ -1,7 +1,7 @@
 // RDMinjectDLL.cpp : Defines the entry point for the DLL application.
 //
 
-#pragma comment (exestr, "RDMInjectDLL v0.4")
+#pragma comment (exestr, "RDMInjectDLL v0.5")
 
 #include "stdafx.h"
 #include "childwins.h"
@@ -402,7 +402,7 @@ LRESULT CALLBACK SubclassWndProc(HWND window, UINT message, WPARAM wParam, LPARA
 			on Intermec CN70:
 			wP=0xE0 lP=0x07EE7288
 			*/
-			if((wParam==0xE0 && lParam==0x07ecd288)||(lParam==0x00 && wParam==0xFA)) {
+			if((wParam==0xE0 && lParam==dwWINI_CHANGEDLPARM)||(lParam==0x00 && wParam==0xFA)) {
 				DEBUGMSG(1, (L"Got WM_WININICHANGE with wP=%i lP=%i\n", wParam, lParam)); //SubclassWndProc: hwnd=0x7c080a60, msg=0x0000001a, wP=224, lP=133071496
 				moveSIP();
 				return 0; //lie about message handled

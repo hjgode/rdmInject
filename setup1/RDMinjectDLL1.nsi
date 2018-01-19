@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "RDM injectDLL1"
-!define PRODUCT_VERSION "04"
+!define PRODUCT_VERSION "05"
 !define PRODUCT_PUBLISHER "HSM"
 !define PRODUCT_WEB_SITE "http://www.honeywellaidc.com"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\RDMinjectDLL1.cab"
@@ -52,6 +52,7 @@ Section "MainSection" SEC01
   CreateDirectory "$INSTDIR"
   File "D:\svn\git\rdmInject\setup1\README.txt"
   File "D:\svn\git\rdmInject\setup1\RDMinjectDLL1.cab"
+  File "D:\svn\git\rdmInject\setup1\RDMinjectDLL1_ck75.cab"
 ;  File "D:\svn\git\rdmInject\setup1\RDMinjectDLL.dll"
 ;  File "D:\svn\git\rdmInject\setup1\StartRDMinject.exe"
   File "D:\svn\git\rdmInject\setup1\HSM EULA.txt"
